@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurse Bot Coach App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto max-w-5xl p-4">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-700">Nurse Bot Coach – ABCPP Framework</h1>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="mb-4">
+                <label for="patient" class="block text-gray-700 font-semibold mb-2">Select a Patient Scenario:</label>
+                <select id="patient" class="w-full p-2 border border-gray-300 rounded-md">
+                    <option value="perez">Ms. Perez – CHF + Dehydration</option>
+                    <option value="wang">Mr. Wang – GI Bleed + Low BP</option>
+                    <option value="smith">Ms. Smith – Pneumonia + Confusion</option>
+                    <option value="davies">Mr. Davies – DKA + ALOC</option>
+                    <option value="green">Ms. Green – Asthma + SOB</option>
+                    <option value="rivera">Mr. Rivera – Suicide Risk + Depression</option>
+                </select>
+            </div>
+            <button onclick="generatePatientScenario()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Start Scenario
+            </button>
+        </div>
+
+        <div id="scenarioBox" class="mt-6 hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold text-blue-800 mb-4">Scenario</h2>
+            <p id="scenarioText" class="text-gray-800 mb-4"></p>
+            <button onclick="generateCoachResponse()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                Apply ABCPP Framework
+            </button>
+        </div>
+
+        <div id="response" class="mt-6 bg-blue-50 p-6 rounded-lg shadow-inner hidden">
+            <h2 class="text-xl font-bold text-blue-800 mb-4">Nurse Bot Coach Prompt</h2>
+            <div id="responseText" class="text-gray-800 mb-4"></div>
+            <label for="studentNotes" class="block text-gray-700 font-semibold mb-2">Your ABCPP Notes:</label>
+            <textarea id="studentNotes" rows="8" class="w-full p-3 border border-gray-300 rounded-md mb-4"></textarea>
+            <button onclick="downloadNotes()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
+                Download Your Notes
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const scenarios = {
+            perez: "Ms. Perez is a 76-year-old admitted for CHF exacerbation. Her O2 sat is 93% on 2L NC. She has dry mucosa, cap refill >3 sec, BP 94/50, HR 104, Cr 2.0, K+ 5.2, and UO is 60 mL over 6 hours.",
+            wang: "Mr. Wang is a 67-year-old with a GI bleed. He has melena, BP 84/50, HR 112, weak pulses, pale skin, and dizziness on sitting. UO is minimal.",
+            smith: "Ms. Smith is a 79-year-old with pneumonia. She is febrile, RR 24, O2 sat 91% on room air, confused, and has crackles in the left base. BP is 106/68.",
+            davies: "Mr. Davies is a 40-year-old with DKA. He is confused, Kussmaul breathing, RR 28, glucose 630, BP 98/60, dry mucosa, and ketones in urine.",
+            green: "Ms. Green is a 20-year-old with asthma. She is SOB, speaking in short phrases, RR 30, accessory muscle use, audible wheezing, and O2 sat 88% on room air.",
+            rivera: "Mr. Rivera is a 29-year-old with a history of depression. He reports suicidal thoughts, withdrawn behavior, flat affect, and has a plan. Vitals stable."
+        };
+
+        function generatePatientScenario() {
+            const selected = document.getElementById("patient").value;
+            const scenarioText = document.getElementById("scenarioText");
+            const scenarioBox = document.getElementById("scenarioBox");
+            const responseBox = document.getElementById("response");
+            responseBox.classList.add("hidden");
+
+            scenarioText.innerText = scenarios[selected];
+            scenarioBox.classList.remove("hidden");
+        }
+
+        function generateCoachResponse() {
+            const responseBox = document.getElementById("response");
+            const responseText = document.getElementById("responseText");
+
+            responseText.innerHTML = `
+                <p><strong>Airway:</strong> Do you detect stridor, inability to phonate, or uvula deviation? Can the patient speak? Is the airway clear?</p>
+                <p><strong>Breathing:</strong> Assess rate, rhythm, depth, symmetry. Any accessory muscle use? Crackles, wheezes? Try High Fowler's, IS, C&DB before oxygen.</p>
+                <p><strong>Circulation:</strong> Analyze DBP and SBP. Is DBP < 60? Are they perfusing their brain—how do you know? Look at UO, cap refill, pulses, mental status.</p>
+                <p><strong>Pain:</strong> Ask about pain using PQRST. Any signs of discomfort or guarding?</p>
+                <p><strong>Psychiatric/Safety:</strong> Are they oriented? Is there agitation, confusion, or risk of harm to self or others?</p>
+            `;
+            responseBox.classList.remove("hidden");
+        }
+
+        function downloadNotes() {
+            const notes = document.getElementById("studentNotes").value;
+            const blob = new Blob([notes], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "ABCPP_Student_Notes.txt";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
