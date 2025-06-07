@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot Complete Clinical Logic</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; padding: 2em; }
+    #container { max-width: 850px; margin: auto; background: #fff; border-radius: 10px; padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 180px; resize: none; }
+    label { font-weight: bold; margin-top: 1em; display: block; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 NurseBot: Full Clinical Logic</h2>
+  <p>Enter vitals as: <strong>Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC</strong></p><p>📌 After completing all steps, scroll to the bottom to review your NurseBot coaching summary.</p>
+  <input id="inputBox" placeholder="e.g. 98.6, 88, 20, 120/70, 95, 3, labored, AOX3">
+
+  <button id="analyzeBtn">1️⃣ Analyze Vitals</button>
+
+  <label for="medlist">💊 Step 2: Medications Scheduled (brand or generic)</label>
+  <input id="medlist" placeholder="e.g. Lasix, Metformin, Morphine, Haldol, Lisinopril">
+
+  <button id="medBtn">2️⃣ Analyze Med Safety</button>
+
+  <label for="sbarInput">📞 Step 3: Your SBAR Summary</label>
+  <textarea id="sbarInput" placeholder="S: ... B: ... A: ... R: ..."></textarea>
+
+  <button id="finalizeBtn">3️⃣ Finalize and Show Full Summary</button>
+  <textarea id="log" readonly placeholder="⬇️ Your full clinical reasoning and NurseBot coaching will appear here after completing all steps. Scroll down to see your output. ⬇️"></textarea>
+</div>
+
+<script>
+let analysis = "", medsOutput = "", studentSBAR = "";
+
+document.getElementById('analyzeBtn').onclick = () => {
+  const input = document.getElementById('inputBox').value.trim();
+  const fields = input.split(',').map(i => i.trim());
+  if (fields.length !== 8) {
+    document.getElementById('log').value = "⚠️ Please enter 8 values: Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp), rrNum = parseInt(rr), pulseNum = parseInt(pulse),
+        spo2Num = parseInt(spo2), painNum = parseInt(pain), locUpper = loc.toUpperCase(),
+        sbp = parseInt(bp.split('/')[0]);
+
+  analysis = "🧠 Clinical Vitals Interpretation\n-----------------------------\n";
+  analysis += `Temp: ${temp}, HR: ${pulse}, RR: ${rr}, BP: ${bp}, SpO₂: ${spo2}%, Pain: ${pain}, Effort: ${effort}, LOC: ${loc}\n\n`;
+
+  if (tempNum < 97) {
+    analysis += "❄️ Temp <97°F → Warm with blankets, socks, warm room.\n";
+  } else if (tempNum > 100.4) {
+    analysis += "🌡️ Temp >100.4°F → Cool with damp cloths, airflow, no blankets.\n";
+  }
+
+  if (spo2Num < 90 || effort.toLowerCase().includes("labored")) {
+    analysis += "🔴 Impaired ventilation: reposition to High Fowler’s.\n";
+    analysis += effort.toLowerCase().includes("labored") ?
+      "Start high-flow O₂, notify MD.\n" : "Try low-flow O₂ and reassess.\n";
+  } else {
+    analysis += "✅ Oxygenation adequate.\n";
+    if (!effort.toLowerCase().includes("effortless") && !effort.toLowerCase().includes("unlabored")) {
+      analysis += "🛌 Reposition to High Fowler’s.\n";
+    }
+  }
+
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locUpper)) {
+    analysis += "⚠️ LOC < AOX4 → Check bedside glucose.\n";
+    analysis += "CN IX/X: Ask to say 'ah'; check uvula symmetry. If abnormal → NPO + call MD.\n";
+  }
+
+  if (pulseNum > 140 || pulseNum < 40 || rrNum > 28 || rrNum < 8 || sbp < 90 || sbp > 180 || spo2Num < 90) {
+    analysis += "\n🚨 RAPID RESPONSE: vital signs outside safe parameters.\n";
+  }
+  document.getElementById('log').value = analysis;
+};
+
+document.getElementById('medBtn').onclick = () => {
+  const meds = document.getElementById('medlist').value.trim().toLowerCase().split(',').map(m => m.trim());
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = document.getElementById('inputBox').value.trim().split(',').map(i => i.trim());
+  const rrNum = parseInt(rr), locUpper = loc.toUpperCase(), sbp = parseInt(bp.split('/')[0]);
+
+  const medMap = {
+    furosemide: "Lasix",
+    metformin: "Glucophage",
+    morphine: "MS Contin",
+    haloperidol: "Haldol",
+    lisinopril: "Prinivil"
+  };
+
+  medsOutput = "\n💊 Med Safety Decisions\n-----------------------------\n";
+  for (let med of meds) {
+    const generic = med.toLowerCase();
+    if (generic.includes("lasix") || generic.includes("furosemide")) {
+      medsOutput += sbp < 90 ? "HOLD Furosemide: SBP < 90\n" : "GIVE Furosemide: BP OK\n";
+    } else if (generic.includes("metformin") || generic.includes("glucophage")) {
+      medsOutput += locUpper !== "AOX4" ? "HOLD Metformin: ALOC\n" : "GIVE Metformin\n";
+    } else if (generic.includes("morphine") || generic.includes("ms contin")) {
+      medsOutput += rrNum < 10 || locUpper !== "AOX4" ? "HOLD Morphine: RR < 10 or ALOC\n" : "GIVE Morphine\n";
+    } else if (generic.includes("haloperidol") || generic.includes("haldol")) {
+      medsOutput += locUpper !== "AOX4" ? "HOLD Haloperidol: ALOC\n" : "GIVE Haloperidol\n";
+    } else if (generic.includes("lisinopril") || generic.includes("prinivil")) {
+      medsOutput += sbp < 90 ? "HOLD Lisinopril: SBP < 90\n" : "GIVE Lisinopril\n";
+    } else {
+      medsOutput += `No rule for ${med}. Use judgment.\n`;
+    }
+  }
+  document.getElementById('log').value = analysis + medsOutput;
+};
+
+document.getElementById('finalizeBtn').onclick = () => {
+  const sbar = document.getElementById('sbarInput').value.trim();
+  const autoSBAR = "📋 Suggested SBAR:\nS: Pt AOX status, abnormal RR/SpO₂.\nB: Decline noted from baseline.\nA: Potential hypoxia, safety issues.\nR: Reposition, oxygen, hold meds, notify MD.\n";
+
+  const log = document.getElementById('log');
+  log.value = analysis + medsOutput + (sbar ? `\n📞 Your SBAR:\n${sbar}\n` : "") + autoSBAR;
+};
+</script>
+</body>
+</html>
