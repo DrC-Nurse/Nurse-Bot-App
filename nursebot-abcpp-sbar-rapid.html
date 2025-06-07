@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Critical Analysis: Nurse Coach Bot</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; padding: 2em; }
+    #container { max-width: 800px; margin: auto; background: #fff; border-radius: 10px; padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 180px; resize: none; }
+    label { font-weight: bold; margin-top: 1em; display: block; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 Critical Analysis: Nurse Coach Bot</h2>
+  <p>Enter values (comma-separated): <strong>Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC</strong></p>
+  <input id="inputBox" placeholder="e.g. 101.4, 112, 28, 90/54, 88, 6, labored, AOX2">
+
+  <label for="meds">💊 Medications: What is scheduled? What will you give or hold and why?</label>
+  <textarea id="meds"></textarea>
+
+  <label for="sbarInput">📞 Your SBAR Summary</label>
+  <textarea id="sbarInput" placeholder="S: ... B: ... A: ... R: ..."></textarea>
+
+  <button id="submitBtn">Generate Summary</button>
+  <textarea id="log" readonly placeholder="Final summary with clinical actions and auto-SBAR will appear here..."></textarea>
+</div>
+
+<script>
+document.getElementById('submitBtn').onclick = () => {
+  const input = document.getElementById('inputBox').value.trim();
+  const fields = input.split(',').map(i => i.trim());
+  const log = document.getElementById('log');
+  const meds = document.getElementById('meds').value.trim();
+  const studentSBAR = document.getElementById('sbarInput').value.trim();
+
+  if (fields.length !== 8) {
+    log.value = "⚠️ Please enter 8 values: Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp), rrNum = parseInt(rr), spo2Num = parseInt(spo2),
+        pulseNum = parseInt(pulse), painNum = parseInt(pain), locUpper = loc.toUpperCase();
+  let result = "🧠 ABCPP Clinical Analysis\n-------------------------------------\n";
+
+  result += "✅ Airway: Open\n";
+  result += "\n🔍 Breathing:\n";
+  if (spo2Num < 90 || effort.toLowerCase().includes("labored")) {
+    result += `SpO₂ = ${spo2Num}%, RR = ${rrNum}, Effort = ${effort}\n→ Impaired ventilation and oxygenation\n`;
+    result += "🛌 Reposition to High Fowler’s to improve chest excursion.\n";
+    result += effort.toLowerCase().includes("labored") ?
+      "🔴 High-flow oxygen (Venturi), notify provider.\n" :
+      "🟡 Low-flow oxygen, reassess in 1 min.\n";
+  } else {
+    result += `SpO₂ = ${spo2Num}%, RR = ${rrNum}, Effort = ${effort}\n✅ Ventilation/oxygenation adequate.\n`;
+    if (!effort.toLowerCase().includes("effortless") && !effort.toLowerCase().includes("unlabored")) {
+      result += "🛌 Reposition to High Fowler’s.\n";
+    }
+  }
+
+  if (tempNum < 97) {
+    result += "\n❄️ Temp <97°F → Warm with blankets, socks, warm room.\n";
+  } else if (tempNum > 100.4) {
+    result += "\n🌡️ Temp >100.4°F → Cool with damp cloths, airflow, no blankets.\n";
+  }
+
+  result += `\n✅ Circulation:\nBP = ${bp}, HR = ${pulseNum}\n`;
+  result += `\n⚠️ Pain: ${painNum}/10. Address after ventilation stabilization.\n`;
+
+  result += "\n⛔ Medication Holds:\n";
+  if (rrNum < 10 || locUpper !== "AOX4") result += "- Narcotics: HOLD\n";
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locUpper)) {
+    result += "- Mental health meds: HOLD\n- Antidiabetics: HOLD unless alert + food present\n";
+  }
+
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locUpper)) {
+    result += "\n⚠️ LOC < AOX4 → Check bedside glucose.\n";
+    result += "Assess CN IX/X: Ask patient to stick out tongue and say 'ah'; check symmetrical uvula rise.\n";
+    result += "If abnormal → NPO + Notify provider STAT.\n";
+  }
+
+  // RAPID RESPONSE TRIGGERS
+  const sbp = parseInt(bp.split('/')[0]);
+  if (pulseNum > 140 || pulseNum < 40 || rrNum > 28 || rrNum < 8 ||
+      sbp > 180 || sbp < 90 || spo2Num < 90 || loc.toLowerCase().includes("confused") ||
+      effort.toLowerCase().includes("wheezing") || painNum >= 7) {
+    result += "\n🚨 RAPID RESPONSE ALERT:\n";
+    result += "- Vital sign(s) or symptom(s) meet escalation criteria.\n";
+    result += "- Intervene early to prevent code. Follow facility protocol.\n";
+  }
+
+  if (meds) result += `\n💊 Medication Notes:\n${meds}\n`;
+  if (studentSBAR) result += `\n📞 Your SBAR Entry:\n${studentSBAR}\n`;
+
+  // Auto-generated SBAR
+  const autoSBAR = `S: Patient is ${loc} with RR ${rrNum}, SpO₂ ${spo2Num}%, and ${effort} breathing.\n` +
+                   `B: New symptoms today with changes in respiratory effort and perfusion.\n` +
+                   `A: Likely impaired ventilation, possible cerebral hypoxia.\n` +
+                   `R: Reposition, initiate O₂, hold sedatives, monitor closely, and notify MD.`;
+  result += `\n📋 Suggested SBAR Model:\n${autoSBAR}`;
+
+  log.value = result;
+};
+</script>
+</body>
+</html>
