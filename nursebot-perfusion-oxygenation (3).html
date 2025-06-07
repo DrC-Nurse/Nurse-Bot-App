@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot: Perfusion + Oxygenation Coach</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 2em; }
+    #container { max-width: 850px; margin: auto; background: #fff; border-radius: 10px; padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 200px; resize: none; }
+    label { font-weight: bold; margin-top: 1em; display: block; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 NurseBot: Perfusion + Oxygenation Coach</h2>
+  <p>Step 1: Enter vitals (Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC)</p>
+  <input id="vitals" placeholder="e.g. 101.4, 112, 28, 90/54, 88, 6, labored, AOX2">
+
+  <p>Step 2: Enter urine output (mL/hr)</p>
+  <input id="uo" placeholder="e.g. 25">
+
+  <p>Step 3: Enter scheduled medications (comma-separated)</p>
+  <input id="medlist" placeholder="e.g. Lasix, Metformin, Morphine, Haldol, Lisinopril">
+
+  <label for="sbarInput">📞 Your SBAR Summary</label>
+  <textarea id="sbarInput" placeholder="S: ... B: ... A: ... R: ..."></textarea>
+
+  <button id="submitBtn">🔍 Generate Summary</button>
+  <textarea id="log" readonly placeholder="⬇️ Your full clinical reasoning and NurseBot coaching will appear here ⬇️"></textarea>
+</div>
+<script>
+document.getElementById('submitBtn').onclick = () => {
+  const fields = document.getElementById('vitals').value.split(',').map(x => x.trim());
+  const uo = parseInt(document.getElementById('uo').value.trim());
+  const meds = document.getElementById('medlist').value.trim().toLowerCase().split(',').map(m => m.trim());
+  const studentSBAR = document.getElementById('sbarInput').value.trim();
+  const log = document.getElementById('log');
+
+  if (fields.length !== 8 || isNaN(uo)) {
+    log.value = "⚠️ Please enter 8 vitals and a valid urine output.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp), pulseNum = parseInt(pulse), rrNum = parseInt(rr),
+        spo2Num = parseInt(spo2), painNum = parseInt(pain), locUpper = loc.toUpperCase(),
+        sbp = parseInt(bp.split('/')[0]), dbp = parseInt(bp.split('/')[1]);
+
+  let result = "🧠 ABCPP Summary
+-------------------------
+";
+
+  // Oxygenation
+  result += "🔍 Oxygenation: ";
+  if (spo2Num < 90 || effort.toLowerCase() !== "effortless") {
+    result += `SpO₂ ${spo2Num}%, effort = ${effort} → Impaired.
+`;
+    result += "🛌 Reposition to High Fowler’s FIRST.
+";
+    result += effort.toLowerCase().includes("labored") ? "🔴 High-flow O₂ indicated.
+" : "🟡 Low-flow O₂ trial + reassess.
+";
+  } else {
+    result += "✅ Oxygenation stable.
+";
+  }
+
+  // Temperature
+  if (tempNum < 97) {
+    result += "❄️ Hypothermia: Warm with blankets, socks, warm room.
+";
+  } else if (tempNum > 100.4) {
+    result += "🌡️ Fever: Cool with damp cloths, airflow, remove blankets.
+";
+  }
+
+  // Perfusion logic
+  result += `
+🫀 Perfusion:
+BP = ${bp}, HR = ${pulse}
+`;
+  if (dbp < 60) {
+    result += "⚠️ DBP < 60 → Encourage PO fluid intake first.
+";
+    result += "📞 If ineffective or NPO → notify MD for IV fluids.
+";
+  }
+
+  // Urine output
+  result += `
+🚽 Urine Output = ${uo} mL/hr
+`;
+  if (uo < 30) {
+    result += "⚠️ UO < 30 → Check daily weight and reassess DBP.
+";
+  }
+
+  // LOC
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locUpper)) {
+    result += "🧠 ALOC → Check bedside glucose.
+";
+    result += "🗣️ CN IX/X: Ask to say 'ah', check uvula symmetry. If abnormal → NPO + notify provider.
+";
+  }
+
+  // Rapid Response Trigger
+  if (pulseNum > 140 || pulseNum < 40 || rrNum > 28 || rrNum < 8 || sbp < 90 || sbp > 180 || spo2Num < 90) {
+    result += "
+🚨 RAPID RESPONSE: Trigger met → Unstable vitals, notify RRT.
+";
+  }
+
+  // Medications
+  result += "
+💊 Medications:
+";
+  for (let med of meds) {
+    if (["lasix", "furosemide"].includes(med)) {
+      result += sbp < 90 ? "HOLD Furosemide: SBP < 90
+" : "GIVE Furosemide
+";
+    } else if (["metformin", "glucophage"].includes(med)) {
+      result += locUpper !== "AOX4" ? "HOLD Metformin: ALOC
+" : "GIVE Metformin
+";
+    } else if (["morphine", "percocet"].includes(med)) {
+      result += rrNum < 10 || locUpper !== "AOX4" ? "HOLD Narcotic: RR < 10 or ALOC
+" : "GIVE Narcotic
+";
+    } else if (["haloperidol", "haldol"].includes(med)) {
+      result += locUpper !== "AOX4" ? "HOLD Antipsychotic: ALOC
+" : "GIVE Antipsychotic
+";
+    } else if (["lisinopril", "prinivil"].includes(med)) {
+      result += sbp < 90 ? "HOLD Lisinopril: SBP < 90
+" : "GIVE Lisinopril
+";
+    } else {
+      result += `${med}: No rules built-in. Use clinical judgment.
+`;
+    }
+  }
+
+  // SBAR
+  if (studentSBAR) result += `
+📞 Your SBAR:
+${studentSBAR}
+`;
+  result += "
+📋 Suggested SBAR:
+S: Pt with ALOC, RR/SpO₂ changes.
+B: New decline in vitals.
+A: Hypoxia + perfusion concerns.
+R: Reposition, oxygen, hold meds, notify MD.
+";
+
+  log.value = result;
+};
+</script>
+</body>
+</html>
