@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 2em;
+    }
+    #container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #botOutput, #summaryOutput {
+      background: #e8f5e9;
+      padding: 1em;
+      border-radius: 10px;
+      margin-bottom: 1em;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 1em;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    button {
+      padding: 0.75em 1.5em;
+      font-size: 1em;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🩺 NurseBot Simulation</h2>
+  <div id="botOutput">
+    Welcome to NurseBot. Let's begin by entering the patient's vitals:<br>
+    <strong>Temperature, Heart Rate, Respiratory Rate, Blood Pressure, SpO₂, Pain Score, Breathing Effort</strong>.<br>
+    Example: 101, 98, 30, 110/60, 86, 2, shallow
+  </div>
+  <label><strong>Enter your response:</strong></label><br>
+  <input type="text" id="userInput" style="width: 100%; padding: 0.75em; margin-top: 0.5em;" />
+  <button id="submitBtn">Send</button>
+  <textarea id="summaryOutput" readonly placeholder="Your summary will appear here..."></textarea>
+</div>
+<script>
+  let step = 0;
+  let summary = "";
+  let initialVitals = [];
+  document.getElementById("submitBtn").addEventListener("click", function() {
+    const input = document.getElementById("userInput").value.trim();
+    const output = document.getElementById("botOutput");
+    const summaryBox = document.getElementById("summaryOutput");
+    if (!input) return;
+
+    if (step === 0) {
+      initialVitals = input.split(",").map(i => i.trim());
+      if (initialVitals.length !== 7) {
+        output.innerHTML = "⚠️ Please enter all 7 vitals (Temp, HR, RR, BP, SpO₂, Pain Score, Breathing Effort) separated by commas.";
+        return;
+      }
+      output.innerHTML = "🧠 What is the patient's level of consciousness? (e.g., AOX4, AOX3, AOX2, AOX1, unresponsive)";
+      step = 0.5;
+
+    } else if (step === 0.5) {
+      const loc = input.trim().toUpperCase();
+      if (!loc) {
+        output.innerHTML = "⚠️ Please enter a valid LOC value.";
+        return;
+      }
+
+      const [temp, hr, rr, bp, spo2, pain, effort] = initialVitals;
+      const saturation = parseInt(spo2);
+      const breathing = effort.toLowerCase();
+
+      summary += `Vitals: Temp=${temp}°F, HR=${hr}, RR=${rr}, BP=${bp}, SpO₂=${spo2}%, Pain=${pain}, Breathing Effort=${effort}, LOC=${loc}
+`;
+
+      let response = `<strong>Vitals received:</strong><br>
+        Temp: ${temp}°F<br> HR: ${hr} bpm<br> RR: ${rr} bpm<br> BP: ${bp}<br>
+        SpO₂: ${spo2}%<br> Pain: ${pain}/10<br> Breathing Effort: ${effort}<br> LOC: ${loc}<br><br>`;
+
+      if (saturation < 90) {
+        if (breathing.includes("effortless")) {
+          response += "🟡 Low SpO₂ with effortless breathing → Start low-flow oxygen (e.g., nasal cannula). Reassess.";
+          summary += "Intervention: Start low-flow O₂ due to low SpO₂ and effortless breathing
+";
+        } else {
+          response += "🔴 Low SpO₂ with labored breathing → Start high-flow oxygen (e.g., Venturi). Escalate care.";
+          summary += "Intervention: High-flow O₂, escalate care
+";
+        }
+      } else {
+        response += "✅ SpO₂ stable. Continue assessment.";
+        summary += "Oxygenation: Stable
+";
+      }
+
+      if (loc !== "AOX4") {
+        response += "⚠️ Decline in LOC detected. Immediate Action: Perform bedside blood glucose. If abnormal, call MD STAT.<br>";
+        response += "Additionally, assess cranial nerve IX/X: Ask patient to stick out tongue and say "ah" to evaluate uvula rise.<br>";
+        response += "If patient is unable to perform this → NPO, call MD and await further instructions.";
+        summary += "Safety Alert: LOC decline from AOX4 → Glucose check, notify MD, assess uvula rise, NPO if abnormal
+";
+      }
+
+      response += "<br><br>➡️ Step 2: Which 3 body systems will you assess first and why?";
+      output.innerHTML = response;
+      step = 1;
+
+    } else if (step === 1) {
+      summary += `Focused Systems: ${input}
+`;
+      output.innerHTML = `<strong>Step 3:</strong> What medications is the patient scheduled to receive?`;
+      step = 2;
+
+    } else if (step === 2) {
+      summary += `Scheduled Meds: ${input}
+`;
+      output.innerHTML = `<strong>Step 4:</strong> Which meds will you hold or give? Why?`;
+      step = 3;
+
+    } else if (step === 3) {
+      summary += `Med Decision Rationale: ${input}
+`;
+      output.innerHTML = `<strong>Step 5:</strong> Enter two shift goals: one for oxygenation, one for perfusion/infection.`;
+      step = 4;
+
+    } else if (step === 4) {
+      summary += `Shift Goals: ${input}
+`;
+      output.innerHTML = `<strong>Final Step:</strong> Enter your SBAR summary (Situation, Background, Assessment, Recommendation).`;
+      step = 5;
+
+    } else {
+      summary += `SBAR: ${input}
+`;
+      output.innerHTML = `<strong>✅ Simulation complete!</strong><br>Copy the summary below for your clinical log.`;
+      document.getElementById("userInput").style.display = "none";
+      document.getElementById("submitBtn").style.display = "none";
+    }
+
+    document.getElementById("userInput").value = "";
+    summaryBox.value = summary;
+  });
+</script>
+</body>
+</html>
