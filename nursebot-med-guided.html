@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot: Med Safety + Clinical Logic</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; padding: 2em; }
+    #container { max-width: 850px; margin: auto; background: #fff; border-radius: 10px; padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 180px; resize: none; }
+    label { font-weight: bold; margin-top: 1em; display: block; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 NurseBot: Medication Safety + Clinical Logic</h2>
+  <p>Enter vitals as: <strong>Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC</strong></p>
+  <input id="inputBox" placeholder="e.g. 98.6, 88, 20, 120/70, 95, 3, labored, AOX4">
+
+  <label for="medlist">💊 Medications Scheduled (comma-separated)</label>
+  <input id="medlist" placeholder="e.g. Furosemide, Morphine, Metformin, Haloperidol">
+
+  <button id="submitBtn">Run Safety Analysis</button>
+  <textarea id="log" readonly placeholder="Clinical reasoning summary will appear here..."></textarea>
+</div>
+
+<script>
+document.getElementById('submitBtn').onclick = () => {
+  const input = document.getElementById('inputBox').value.trim();
+  const medsRaw = document.getElementById('medlist').value.trim();
+  const fields = input.split(',').map(i => i.trim());
+  const log = document.getElementById('log');
+
+  if (fields.length !== 8) {
+    log.value = "⚠️ Please enter 8 values: Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp), rrNum = parseInt(rr), pulseNum = parseInt(pulse),
+        spo2Num = parseInt(spo2), painNum = parseInt(pain), locUpper = loc.toUpperCase(),
+        sbp = parseInt(bp.split('/')[0]);
+  const medList = medsRaw.split(',').map(m => m.trim().toLowerCase());
+
+  let output = "🧠 Medication Safety Review\n-----------------------------\n";
+
+  for (let med of medList) {
+    if (med.includes("furosemide")) {
+      if (sbp < 90) output += "HOLD Furosemide: SBP < 90 → Risk of hypotension/dehydration.\n";
+      else output += "GIVE Furosemide: BP stable.\n";
+    } else if (med.includes("metformin")) {
+      if (locUpper !== "AOX4") output += "HOLD Metformin: ALOC → Risk of hypoglycemia, can't confirm PO intake.\n";
+      else output += "GIVE Metformin: Alert + presumed oral intake OK.\n";
+    } else if (med.includes("morphine")) {
+      if (rrNum < 10 || locUpper !== "AOX4") output += "HOLD Morphine: RR < 10 or ALOC → Risk of respiratory depression.\n";
+      else output += "GIVE Morphine: RR + LOC safe.\n";
+    } else if (med.includes("haloperidol")) {
+      if (locUpper !== "AOX4") output += "HOLD Haloperidol: ALOC → Risk of worsening mental status or EPS.\n";
+      else output += "GIVE Haloperidol: LOC stable.\n";
+    } else if (med.includes("lisinopril")) {
+      if (sbp < 90) output += "HOLD Lisinopril: SBP < 90 → Risk of hypotension.\n";
+      else output += "GIVE Lisinopril: BP stable.\n";
+    } else {
+      output += `📝 ${med.charAt(0).toUpperCase() + med.slice(1)}: No decision logic built in. Use clinical judgment.\n`;
+    }
+  }
+
+  log.value = output;
+};
+</script>
+</body>
+</html>
