@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot Guided Input</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 2em;
+    }
+    #container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button, textarea {
+      width: 100%;
+      margin-top: 1em;
+      padding: 0.75em;
+      font-size: 1em;
+    }
+    textarea {
+      height: 200px;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🩺 NurseBot Guided Input</h2>
+  <div id="prompt">What is the patient's <strong>Temperature?</strong></div>
+  <input id="inputBox" placeholder="Enter response here">
+  <button id="submitBtn">Submit</button>
+  <textarea id="log" readonly placeholder="Simulation summary will appear here..."></textarea>
+</div>
+<script>
+  const prompts = [
+    "Temperature",
+    "Pulse",
+    "Respiratory Rate",
+    "Blood Pressure",
+    "SpO₂",
+    "Pain Score",
+    "Breathing Effort",
+    "Level of Consciousness (e.g., AOX4, AOX3, unresponsive)"
+  ];
+  const inputs = [];
+  let step = 0;
+
+  const promptDiv = document.getElementById('prompt');
+  const inputBox = document.getElementById('inputBox');
+  const submitBtn = document.getElementById('submitBtn');
+  const log = document.getElementById('log');
+
+  submitBtn.onclick = () => {
+    const response = inputBox.value.trim();
+    if (!response) return;
+    inputs.push(response);
+    inputBox.value = "";
+
+    if (step < prompts.length - 1) {
+      step++;
+      promptDiv.innerHTML = `What is the patient's <strong>${prompts[step]}?</strong>`;
+    } else {
+      const [temp, pulse, rr, bp, spo2, pain, effort, loc] = inputs;
+      let output = `Vitals Received:
+Temp: ${temp}°F
+Pulse: ${pulse} bpm
+Respiratory Rate: ${rr}
+BP: ${bp}
+SpO₂: ${spo2}%
+Pain: ${pain}/10
+Breathing Effort: ${effort}
+LOC: ${loc}
+
+`;
+
+      const spo2Num = parseInt(spo2);
+      if (spo2Num < 90) {
+        if (effort.toLowerCase().includes("unlabored") || effort.toLowerCase().includes("normal")) {
+          output += "🟡 Action: Low SpO₂ with unlabored breathing → Start low-flow oxygen and reassess.
+";
+        } else {
+          output += "🔴 Action: Low SpO₂ with labored breathing → Start high-flow oxygen, notify provider.
+";
+        }
+      } else {
+        output += "✅ Oxygenation appears stable.
+";
+      }
+
+      const locUpper = loc.toUpperCase();
+      if (["AOX1", "AOX2", "AOX3", "UNRESPONSIVE"].includes(locUpper)) {
+        output += "⚠️ LOC is not AOX4. Immediate Action: Check bedside glucose.
+";
+        output += "Assess CN IX/X: Ask patient to say 'ah'. If uvula doesn't rise → place NPO and notify provider STAT.
+";
+      }
+
+      promptDiv.innerHTML = "✅ All data received.";
+      inputBox.style.display = "none";
+      submitBtn.style.display = "none";
+      log.value = output;
+    }
+  };
+</script>
+</body>
+</html>
