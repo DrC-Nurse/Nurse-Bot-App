@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Critical Analysis: Nurse Coach Bot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 2em;
+    }
+    #container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button, textarea {
+      width: 100%;
+      margin-top: 1em;
+      padding: 0.75em;
+      font-size: 1em;
+    }
+    textarea {
+      height: 300px;
+      resize: none;
+    }
+    label {
+      margin-top: 1em;
+      display: block;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 Critical Analysis: Nurse Coach Bot</h2>
+  <p>Enter all 8 values separated by commas:</p>
+  <p><strong>Temperature, Pulse, Respiratory Rate, Blood Pressure, SpO2, Pain, Breathing Effort, LOC</strong></p>
+  <input id="inputBox" placeholder="e.g. 101.4, 112, 28, 90/54, 88, 6, labored, AOX2">
+
+  <label for="meds">💊 What medications are scheduled? What will you give or hold?</label>
+  <textarea id="meds"></textarea>
+
+  <label for="sbar">📞 SBAR Summary (use S: ..., B: ..., A: ..., R: ...)</label>
+  <textarea id="sbar"></textarea>
+
+  <button id="submitBtn">Generate Analysis</button>
+  <textarea id="log" readonly placeholder="Final summary will appear here..."></textarea>
+</div>
+
+<script>
+document.getElementById('submitBtn').onclick = () => {
+  const input = document.getElementById('inputBox').value.trim();
+  const fields = input.split(',').map(i => i.trim());
+  const log = document.getElementById('log');
+  const meds = document.getElementById('meds').value.trim();
+  const sbar = document.getElementById('sbar').value.trim();
+
+  if (fields.length !== 8) {
+    log.value = "⚠️ Please enter exactly 8 values: Temp, Pulse, RR, BP, SpO₂, Pain, Breathing Effort, LOC.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp);
+  const spo2Num = parseInt(spo2);
+  const rrNum = parseInt(rr);
+  const pulseNum = parseInt(pulse);
+  const painNum = parseInt(pain);
+  const locUpper = loc.toUpperCase();
+  let result = "";
+
+  result += "🧠 ABCPP Clinical Analysis\n";
+  result += "-------------------------------------\n";
+
+  // AIRWAY
+  result += "✅ Airway:\n";
+  result += "Open unless noted otherwise.\n";
+
+  // BREATHING
+  result += "\n🔍 Breathing:\n";
+  if (spo2Num < 90 || effort.toLowerCase().includes("labored")) {
+    result += `SpO₂ = ${spo2Num}%, RR = ${rrNum}, Effort = ${effort}\n`;
+    result += "→ Impaired ventilation and oxygenation\n";
+    result += "🛌 Reposition patient to High Fowler’s to improve chest excursion.\n";
+    result += effort.toLowerCase().includes("labored") ?
+      "🔴 Start high-flow oxygen (e.g., Venturi), notify provider.\n" :
+      "🟡 Start low-flow oxygen (e.g., nasal cannula), reassess after 1 minute.\n";
+  } else {
+    result += `SpO₂ = ${spo2Num}%, RR = ${rrNum}, Effort = ${effort}\n`;
+    result += "✅ Ventilation and oxygenation adequate.\n";
+    if (!effort.toLowerCase().includes("unlabored") && !effort.toLowerCase().includes("effortless")) {
+      result += "🛌 Reposition patient to High Fowler’s to improve chest excursion.\n";
+    }
+  }
+
+  // TEMPERATURE
+  if (tempNum < 97) {
+    result += "\n❄️ Temp <97°F → Warm with blankets, socks, warm environment.\n";
+  } else if (tempNum > 100.4) {
+    result += "\n🌡️ Temp >100.4°F → Cool with damp cloths, airflow, remove blankets.\n";
+  }
+
+  // CIRCULATION
+  result += "\n✅ Circulation:\n";
+  result += `BP = ${bp}, HR = ${pulseNum} → Perfusion likely stable.\n`;
+
+  // PAIN
+  result += "\n⚠️ Pain:\n";
+  result += `Pain score = ${painNum}/10. Address after stabilizing airway/breathing.\n`;
+
+  // MEDICATION HOLDS
+  result += "\n⛔ Medication Holds:\n";
+  if (rrNum < 10 || locUpper !== "AOX4") result += "- Narcotics: HOLD (RR < 10 or ALOC)\n";
+  if (["AOX1", "AOX2", "AOX3", "UNRESPONSIVE"].includes(locUpper)) {
+    result += "- Mental health meds: HOLD (ALOC)\n";
+    result += "- Antidiabetics: HOLD unless alert and food present\n";
+  }
+
+  // LOC logic
+  if (["AOX1", "AOX2", "AOX3", "UNRESPONSIVE"].includes(locUpper)) {
+    result += "\n⚠️ LOC < AOX4 → Check bedside glucose.\n";
+    result += "Assess CN IX/X: Ask patient to stick out tongue and say 'ah'; verify symmetrical rise of uvula when phonating.\n";
+    result += "If unable → place NPO and notify provider STAT.\n";
+  }
+
+  if (meds) result += `\n💊 Meds: ${meds}\n`;
+  if (sbar) result += `\n📞 SBAR: ${sbar}\n`;
+
+  log.value = result;
+};
+</script>
+</body>
+</html>
