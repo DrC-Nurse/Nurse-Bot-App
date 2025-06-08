@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot Final Coaching</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 2em; }
+    #container { max-width: 850px; margin: auto; background: #fff; border-radius: 10px; padding: 2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 300px; resize: none; }
+    label { font-weight: bold; margin-top: 1em; display: block; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 NurseBot: Clinical Decision Coach</h2>
+  <p><strong>Step 1:</strong> Enter vitals: Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC</p>
+  <input id="vitals" placeholder="e.g. 101.4, 112, 28, 90/54, 88, 6, labored, AOX2">
+  <p><strong>Step 2:</strong> Urine Output (mL/hr)</p>
+  <input id="uo" placeholder="e.g. 25">
+  <p><strong>Step 3:</strong> Scheduled Medications</p>
+  <input id="medlist" placeholder="e.g. Lasix, Metformin, Morphine, Haldol, Lisinopril">
+  <label for="sbarInput">📞 Your SBAR Summary</label>
+  <textarea id="sbarInput" placeholder="S: ... B: ... A: ... R: ..."></textarea>
+  <button id="submitBtn">🔍 Generate Summary</button>
+  <textarea id="log" readonly placeholder="⬇️ NurseBot summary will appear here ⬇️"></textarea>
+</div>
+<script>
+document.getElementById('submitBtn').onclick = () => {
+  const fields = document.getElementById('vitals').value.split(',').map(x => x.trim());
+  const uo = parseInt(document.getElementById('uo').value.trim());
+  const meds = document.getElementById('medlist').value.toLowerCase().split(',').map(m => m.trim());
+  const sbarInput = document.getElementById('sbarInput').value.trim();
+  const log = document.getElementById('log');
+
+  if (fields.length !== 8 || isNaN(uo)) {
+    log.value = "⚠️ Enter all 8 vitals and a valid urine output.";
+    return;
+  }
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = fields;
+  const tempNum = parseFloat(temp), pulseNum = parseInt(pulse), rrNum = parseInt(rr),
+        spo2Num = parseInt(spo2), painNum = parseInt(pain), locUpper = loc.toUpperCase(),
+        sbp = parseInt(bp.split('/')[0]), dbp = parseInt(bp.split('/')[1]);
+
+  let output = "🧠 ABCPP Summary\n-------------------------\n";
+
+  output += `Vitals: Temp ${temp}°F | HR ${pulse} | RR ${rr} | BP ${bp} | SpO₂ ${spo2}% | Pain ${pain}/10 | Effort ${effort} | LOC ${loc}\n\n`;
+
+  // Oxygenation
+  if (spo2Num < 90 || effort.toLowerCase() !== "effortless") {
+    output += "🔍 Oxygenation: Impaired.\n🛌 Reposition to High Fowler’s FIRST.\n";
+    output += effort.toLowerCase().includes("labored") ? "🔴 High-flow O₂ needed.\n" : "🟡 Low-flow O₂ trial.\n";
+  } else {
+    output += "✅ Oxygenation: Stable.\n";
+  }
+
+  // Temperature
+  if (tempNum < 97) output += "❄️ Temp <97°F → Warm with blankets, socks, warm room.\n";
+  if (tempNum > 100.4) output += "🌡️ Temp >100.4°F → Cool with damp cloths, airflow, remove blankets.\n";
+
+  // Perfusion
+  output += `\n🫀 DBP = ${dbp}\n`;
+  if (dbp < 60) {
+    output += "⚠️ Low DBP → Encourage PO fluids first.\n📞 If NPO or not improving, notify MD for IV bolus.\n";
+  }
+
+  // UO
+  output += `\n🚽 UO = ${uo} mL/hr\n`;
+  if (uo < 30) output += "⚠️ UO <30 → Check daily weight, reassess DBP.\n";
+
+  // LOC
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locUpper)) {
+    output += "🧠 ALOC → Check glucose.\n🗣️ CN IX/X: Ask to say 'ah'; if uvula doesn’t rise symmetrically → NPO + notify MD.\n";
+  }
+
+  // Rapid Response
+  if (pulseNum > 140 || pulseNum < 40 || rrNum > 28 || rrNum < 8 || sbp < 90 || sbp > 180 || spo2Num < 90) {
+    output += "\n🚨 RAPID RESPONSE: Trigger met. Notify RRT.\n";
+  }
+
+  // Medications
+  output += "\n💊 Medication Decisions:\n";
+  for (let med of meds) {
+    if (["lasix", "furosemide"].includes(med)) output += sbp < 90 ? "HOLD Furosemide: SBP < 90\n" : "GIVE Furosemide\n";
+    else if (["metformin", "glucophage"].includes(med)) output += locUpper !== "AOX4" ? "HOLD Metformin: ALOC\n" : "GIVE Metformin\n";
+    else if (["morphine", "percocet"].includes(med)) output += rrNum < 10 || locUpper !== "AOX4" ? "HOLD Narcotic\n" : "GIVE Narcotic\n";
+    else if (["haloperidol", "haldol"].includes(med)) output += locUpper !== "AOX4" ? "HOLD Antipsychotic\n" : "GIVE Antipsychotic\n";
+    else if (["lisinopril", "prinivil"].includes(med)) output += sbp < 90 ? "HOLD Lisinopril\n" : "GIVE Lisinopril\n";
+    else output += `${med}: Use clinical judgment.\n`;
+  }
+
+  if (sbarInput) output += `\n📞 Your SBAR:\n${sbarInput}\n`;
+
+  output += "\n📋 Suggested SBAR:\nS: Pt with ALOC, RR/SpO₂ changes.\nB: New vitals decline.\nA: Perfusion + oxygenation concern.\nR: Reposition, oxygen, hold meds, notify MD.\n";
+
+  document.getElementById('log').value = output;
+};
+</script>
+</body>
+</html>
