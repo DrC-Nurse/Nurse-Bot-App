@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NurseBot Working Clinical</title>
+  <style>
+    body { font-family: Arial; background: #f2f2f2; padding: 2em; }
+    #container { max-width: 850px; margin: auto; background: #fff; padding: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, textarea, button { width: 100%; margin-top: 1em; padding: 0.75em; font-size: 1em; }
+    textarea { height: 200px; resize: none; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <h2>🧠 NurseBot: Working Clinical Logic</h2>
+  <p><strong>Enter:</strong> Temp, Pulse, RR, BP, SpO₂, Pain, Effort, LOC</p>
+  <input id="vitals" placeholder="e.g. 101.4, 112, 28, 90/54, 88, 6, labored, AOX2">
+  <p>Urine Output (mL/hr)</p>
+  <input id="uo" placeholder="e.g. 25">
+  <p>Scheduled Medications</p>
+  <input id="meds" placeholder="e.g. Lasix, Metformin, Morphine">
+  <p>Your SBAR</p>
+  <textarea id="sbar"></textarea>
+  <button id="generate">🔍 Generate Summary</button>
+  <textarea id="output" readonly placeholder="⬇️ NurseBot clinical summary will appear here ⬇️"></textarea>
+</div>
+<script>
+document.getElementById('generate').onclick = () => {
+  const vitals = document.getElementById('vitals').value.split(',').map(s => s.trim());
+  const uo = parseInt(document.getElementById('uo').value.trim());
+  const meds = document.getElementById('meds').value.toLowerCase().split(',').map(m => m.trim());
+  const sbar = document.getElementById('sbar').value.trim();
+  const out = document.getElementById('output');
+  if (vitals.length !== 8 || isNaN(uo)) return out.value = "⚠️ Enter all vitals and valid UO.";
+
+  const [temp, pulse, rr, bp, spo2, pain, effort, loc] = vitals;
+  const tempN = parseFloat(temp), pulseN = parseInt(pulse), rrN = parseInt(rr),
+        spo2N = parseInt(spo2), painN = parseInt(pain), sbp = parseInt(bp.split('/')[0]),
+        dbp = parseInt(bp.split('/')[1]), locU = loc.toUpperCase();
+  let result = "🧠 NurseBot Clinical Summary
+----------------------------
+";
+  result += `Vitals: Temp ${tempN}°F | HR ${pulseN} | RR ${rrN} | BP ${bp} | SpO₂ ${spo2N}% | Pain ${painN}/10 | Effort ${effort} | LOC ${locU}
+
+`;
+
+  if (spo2N < 90 || effort !== "effortless") {
+    result += "🔍 Oxygenation impaired → Reposition to High Fowler’s FIRST.
+";
+    result += effort.includes("labored") ? "🔴 High-flow O₂ indicated.
+" : "🟡 Low-flow O₂ + reassess.
+";
+  } else result += "✅ Oxygenation stable.
+";
+
+  if (tempN < 97) result += "❄️ Temp <97°F → Warm patient.
+";
+  if (tempN > 100.4) result += "🌡️ Temp >100.4°F → Cool patient.
+";
+  if (dbp < 60) result += "🫀 DBP < 60 → Encourage PO fluids first, then IV if needed.
+";
+  if (uo < 30) result += "🚽 UO <30 → Check weight, reassess DBP.
+";
+  if (["AOX1","AOX2","AOX3","UNRESPONSIVE"].includes(locU)) {
+    result += "🧠 ALOC → Glucose check, assess CN IX/X, NPO + notify MD if abnormal.
+";
+  }
+
+  if (pulseN > 140 || pulseN < 40 || rrN > 28 || rrN < 8 || sbp < 90 || sbp > 180 || spo2N < 90)
+    result += "🚨 RAPID RESPONSE: Unstable vitals detected.
+";
+
+  result += "
+💊 Medications:
+";
+  meds.forEach(med => {
+    if (["lasix", "furosemide"].includes(med)) result += sbp < 90 ? "HOLD Furosemide
+" : "GIVE Furosemide
+";
+    else if (["metformin", "glucophage"].includes(med)) result += locU !== "AOX4" ? "HOLD Metformin
+" : "GIVE Metformin
+";
+    else if (["morphine", "percocet"].includes(med)) result += rrN < 10 || locU !== "AOX4" ? "HOLD Narcotic
+" : "GIVE Narcotic
+";
+    else result += `${med}: No rule. Use judgment.
+`;
+  });
+
+  if (sbar) result += `
+📞 Your SBAR:
+${sbar}
+`;
+  result += "
+📋 Suggested SBAR:
+S: ALOC, impaired vitals
+B: Decline noted
+A: Hypoxia + perfusion concern
+R: Reposition, oxygen, notify MD
+";
+  out.value = result;
+};
+</script>
+</body>
+</html>
